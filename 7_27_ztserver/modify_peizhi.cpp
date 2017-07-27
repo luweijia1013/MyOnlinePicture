@@ -33,23 +33,32 @@ void writeLog(const string &log)
 	cout << "log:" << log << endl; 
 }
 
-struct exchangeGem_CS
+struct exchange_dyn
 {
-	exchangeGem_CS()
-	{
-		objThisIDA = 0;
-		objThisIDB = 0;
-	}
-	int objThisIDA;//道具A的唯一ID
-	int objThisIDB;//道具B的唯一ID
-};
+    exchange_dyn
+    {}
+    int oldnum;
+    vector<int> olditemids;
+    int newnum;
+    vector<int> newitemids;
+    int pack_need;//necessary?
+}
 
 struct item
 {
 	int id;// 道具ID
 	int thisid;//道具唯一ID 
-	int aptitude;//资质	
+	struct aptitude_dyn;//可配置资质	
 };
+
+struct aptitude_dyn
+{
+    aptitude_dyn()
+    {}
+    int aptitude_num;
+    //size should be aptitude_num
+    vector<int> aptitude_value;
+}
 
 /**
  * \brief 玩家的包裹类
@@ -148,8 +157,56 @@ struct user
 
 bool exchangeGem(exchangeGem_CS &cmd,user &m_user)
 {
+    if(cmd.objThisIDA == cmd.objThisIDB)
+    {
+        writeLog("ID相同");
+        return false;
+    }
 
+    item* item1 = m_user.pack.getItemByThisID(cmd.objThisIDA);
+    item* item2 = m_user.pack.getItemByThisID(cmd.objThisIDB);
+
+    //Lock needed here
+    if(!item1||!item2)
+    {
+        writeLog("ID对应的物品不存在");
+        return false;
+    }
+
+    
+    if(item1->id != smallDragonID || item2->id != smallDragonID)
+    {
+        sendTextToUser("请选取两只小火龙");
+        return false;
+    }
+
+    if(item1->aptitude != 1 || item2->aptitude !=1)
+    {
+        sendTextToUser("资质不满足");
+        return false;
+    }
+
+    if(m_user.pack.getSpaceNum() < 2)
+    {
+        sendTextToUser("包裹空间不足");
+        return false;
+    }
+
+   if( !m_user.pack.removeItem(item1) || !m_user.pack.removeItem(item2))
+   {
+       writeLog("移除物品失败");
+       return false;
+   }
+
+   if( !m_user.pack.addItem(gemID, 100))
+   {
+       writeLog("增加物品失败");
+       return false;
+   }
+    //UnLock needed here
+    return true;
 }
+
 
 int main()
 {
